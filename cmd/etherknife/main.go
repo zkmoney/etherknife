@@ -138,15 +138,14 @@ func main() {
 }
 
 func run(tc *TxnContext) error {
-	if err := tc.Validate(); err != nil {
-		return err
-	}
-
 	accs := tc.Keystore.Accounts()
-
 	if len(accs) < 1 {
 		fmt.Println("Please create an account in the keystore first")
 		return nil
+	}
+
+	if err := tc.Validate(); err != nil {
+		return err
 	}
 
 	var (
@@ -225,8 +224,7 @@ type TxnContext struct {
 	Gas      int
 	GasPrice int
 	Nonce    int
-
-	Data []byte
+	Data     []byte
 
 	ChainID    int
 	Passphrase string

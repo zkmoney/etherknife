@@ -1,1 +1,6 @@
+# Private ethereum accounts
 keystore
+
+# Build artifacts (keep the dir)
+/build/*
+!/build/.gitkeep
