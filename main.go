@@ -35,9 +35,9 @@ func main() {
 			Usage:       "to `address` in transaction",
 			Destination: &tc.To,
 		},
-		cli.Float64Flag{
+		cli.StringFlag{
 			Name:        "amount, a",
-			Value:       0,
+			Value:       "0",
 			Usage:       "`ether` to send",
 			Destination: &tc.Amount,
 		},
@@ -118,8 +118,6 @@ func main() {
 	}
 
 	app.Before = func(c *cli.Context) error {
-		tc.Validate()
-
 		keystorePath, err := filepath.Abs(c.GlobalString("keystore"))
 		if err != nil {
 			return err
@@ -140,6 +138,10 @@ func main() {
 }
 
 func run(tc *TxnContext) error {
+	if err := tc.Validate(); err != nil {
+		return err
+	}
+
 	accs := tc.Keystore.Accounts()
 
 	if len(accs) < 1 {
@@ -182,7 +184,6 @@ func run(tc *TxnContext) error {
 	fmt.Println("Gas Price: ", tx.GasPrice())
 	fmt.Println("Data:      ", string(tx.Data()))
 	fmt.Println("Chain ID:  ", tc.ChainID)
-	fmt.Println("Txn Hash:  ", tx.Hash().Hex())
 
 	fmt.Printf("\nSigning transaction...\n")
 	signedTx, err := tc.Keystore.SignTxWithPassphrase(a, tc.Passphrase, tx, chainID)
@@ -220,7 +221,7 @@ func run(tc *TxnContext) error {
 type TxnContext struct {
 	To       string
 	From     string
-	Amount   float64
+	Amount   string
 	Gas      int
 	GasPrice int
 	Nonce    int
@@ -262,11 +263,19 @@ var (
 	ZeroAddress = common.HexToAddress("0x0000000000000000000000000000000000000000")
 )
 
-func toWei(x float64) *big.Int {
-	amount := new(big.Float).Mul(big.NewFloat(x), BigEther)
+func toWei(x string) *big.Int {
+	n, ok := new(big.Float).SetString(x)
+	if !ok {
+		log.Fatalf("Can't convert '%s' to wei", x)
+	}
+
+	amount := new(big.Float).Mul(n, BigEther)
+
 	wei, acc := amount.Int(nil)
 	if acc != 0 {
-		panic("Ether value is not accurate")
+		fmt.Println("Wei:", wei)
+		fmt.Println("Acc:", acc)
+		log.Fatalln("Ether value is not accurate", wei)
 	}
 	return wei
 }
@@ -287,8 +296,8 @@ func askPassphrase(prompt string) string {
 func askAccount(accs []accounts.Account) (accounts.Account, error) {
 	var a accounts.Account
 	for {
-		fmt.Println("Accounts")
-		fmt.Println("--------")
+		fmt.Println("Keystore Accounts")
+		fmt.Println("-----------------")
 		for idx, a := range accs {
 			fmt.Printf("%d) %v\n", idx, a.Address.Hex())
 		}
